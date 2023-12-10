@@ -25,7 +25,6 @@ export class RefreshTokenMiddleware implements NestMiddleware {
 
       // Check if token expire date is between 1 days from now
       const dateCheck = exp * 1000 >= $aDayEarlier;
-
       if (dateCheck) {
         console.log('Refresh Token Middleware Triggered');
         const newToken = await firstValueFrom(

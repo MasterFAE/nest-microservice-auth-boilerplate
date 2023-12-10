@@ -1,6 +1,8 @@
+import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 
 export class CreateUserDto {
+  @Transform(({ value }) => value.trim())
   @IsNotEmpty()
   @MinLength(4)
   @MaxLength(20)
@@ -18,9 +20,8 @@ export class CreateUserDto {
 
 export class SignInUserDto {
   @IsNotEmpty()
-  @MinLength(4)
-  @MaxLength(20)
-  username: string;
+  @IsEmail()
+  email: string;
 
   @IsNotEmpty()
   @MinLength(8)

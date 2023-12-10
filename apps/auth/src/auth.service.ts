@@ -3,10 +3,17 @@ import IAuthService from './interface/IAuthService';
 import { CreateUserDto, SignInUserDto } from './dto';
 import { JwtService } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
+import { PrismaService } from '@app/prisma';
+import { User } from '@prisma/client';
+import * as bcrypt from 'bcrypt';
+import type { JwtUser } from '../model/jwt-user';
 
 @Injectable()
 export class AuthService implements IAuthService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   async verifyJWT(
     jwt: string,
@@ -23,28 +30,73 @@ export class AuthService implements IAuthService {
     }
   }
 
-  signUp(data: CreateUserDto): Promise<any> {
-    throw new Error('Method not implemented.');
+  async signUp({
+    username,
+    email,
+    password,
+  }: CreateUserDto): Promise<Omit<User, 'password'> & { token: string }> {
+    const checkUser = await this.checkUser(email, username);
+    if (checkUser && checkUser.id) throw new Error('User already exists');
+
+    const hash = bcrypt.hashSync(password, 10);
+    const newUser = await this.prisma.user.create({
+      data: {
+        username,
+        email,
+        password: hash,
+      },
+    });
+
+    const token = await this.signJWT({
+      username,
+      email,
+      sub: newUser.id,
+    });
+    // Instead of delete user.password using this
+    const { password: _, ...noPasswordUser } = newUser;
+
+    return { ...noPasswordUser, token };
   }
 
-  async signIn({ username, password }: SignInUserDto) {
-    const user = { username };
-    const token = await this.signJWT(user);
-    return token;
+  async signIn({
+    email,
+    password,
+  }: SignInUserDto): Promise<Omit<User, 'password'> & { token: string }> {
+    const checkUser = await this.checkUser(email);
+    if (!checkUser) throw new Error('Invalid credentials');
+
+    const compare = await bcrypt.compare(password, checkUser.password);
+    if (!compare) throw new Error('Invalid credentials');
+
+    // Instead of delete user.password using this
+    const { password: _, ...noPasswordUser } = checkUser;
+
+    const token = await this.signJWT({
+      username: noPasswordUser.username,
+      email,
+      sub: noPasswordUser.id,
+    });
+
+    return { ...noPasswordUser, token };
   }
 
-  checkUser() {
-    throw new Error('Method not implemented.');
+  async checkUser(email, username?): Promise<User> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [{ email }, username != null ? { username } : {}],
+      },
+    });
+    return user;
   }
 
-  async signJWT(user: any) {
+  async signJWT(user: JwtUser) {
     const token = await this.jwtService.sign({ user });
     return token;
   }
 
   async decodeJWT(
     token: string,
-  ): Promise<{ user: any; exp: number } | RpcException> {
+  ): Promise<{ user: JwtUser; exp: number } | RpcException> {
     if (!token) {
       throw new RpcException('JWT token is missing');
     }

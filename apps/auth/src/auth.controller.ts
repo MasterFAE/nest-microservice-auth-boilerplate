@@ -1,8 +1,6 @@
 import {
-  BadRequestException,
   Controller,
-  Get,
-  Inject,
+  HttpStatus,
   Post,
   Response,
   UseGuards,
@@ -16,7 +14,10 @@ import {
 } from '@nestjs/microservices';
 import { SharedService } from '@app/shared';
 import { JwtGuard } from './jwt.guard';
-import { SignInUserDto } from './dto';
+import { CreateUserDto, SignInUserDto } from './dto';
+import setCookieOptions from 'libs/constants/functions/setCookieOptions';
+import { Response as ExpressResponse } from 'express';
+import ApiResponse from 'libs/constants/model/apiresponse.class';
 
 @Controller()
 export class AuthController {
@@ -31,15 +32,27 @@ export class AuthController {
     @Response({ passthrough: true }) res,
   ) {
     try {
-      const token = await this.authService.signIn(data);
-      res.cookie('access_token', token, {
-        // httpOnly: true,
-        maxAge: 3.154e10,
-      });
-      return { token };
+      const user = await this.authService.signIn(data);
+      setCookieOptions(res, 'access_token', user.token);
+      return new ApiResponse({ user });
     } catch (error) {
-      console.log({ error });
-      return new BadRequestException('');
+      res.status(HttpStatus.BAD_REQUEST);
+      return new ApiResponse(null, false, error.toString());
+    }
+  }
+
+  @Post('signup')
+  async register(
+    @Payload() data: CreateUserDto,
+    @Response({ passthrough: true }) res: ExpressResponse,
+  ) {
+    try {
+      const user = await this.authService.signUp(data);
+      setCookieOptions(res, 'access_token', user.token);
+      return new ApiResponse({ user });
+    } catch (error) {
+      res.status(HttpStatus.BAD_REQUEST);
+      return new ApiResponse(null, false, error.toString());
     }
   }
 

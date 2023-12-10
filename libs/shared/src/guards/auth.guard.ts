@@ -36,10 +36,11 @@ export class AuthGuard implements CanActivate {
       .send({ cmd: 'verify-jwt' }, { token: access_token })
       .pipe(
         switchMap((res) => {
-          console.log({ res });
           if (res instanceof RpcException) {
             throw new UnauthorizedException(res.message);
           }
+          // The user called back from jwt.strategy is now accesible with req.user
+          req.user = res.user;
           return of(true);
         }),
         catchError((err) => {

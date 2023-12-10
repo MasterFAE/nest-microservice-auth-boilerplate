@@ -2,6 +2,7 @@ import { Controller, Get, Inject, Req } from '@nestjs/common';
 import { AppService } from './app.service';
 import { ClientProxy } from '@nestjs/microservices';
 import { Public } from '@app/shared/decorators/public.decorator';
+import { User } from '@app/shared/decorators/user.decorator';
 
 @Controller()
 export class AppController {
@@ -11,9 +12,8 @@ export class AppController {
   ) {}
 
   @Get('')
-  async getHello2(@Req() req) {
-    console.log({ user: req.user });
-    return 'Succeed';
+  async getHello2(@User() user) {
+    return `Welcome ${user.email}`;
   }
 
   @Get('test')

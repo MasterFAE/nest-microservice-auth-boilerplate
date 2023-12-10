@@ -19,11 +19,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     });
   }
 
-  static extractJWTfromCookie(req: Request): string {
-    return req.cookies.access_token ?? null;
+  static extractJWTfromCookie(req): string {
+    return req.cookies ? req.cookies.access_token : req.token ?? null;
   }
 
   validate(payload: any) {
-    return { id: payload.id, username: payload.username };
+    return payload;
   }
 }

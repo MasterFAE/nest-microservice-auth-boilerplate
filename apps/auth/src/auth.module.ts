@@ -5,10 +5,14 @@ import { SharedModule, SharedService } from '@app/shared';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { JwtStrategy } from './jwt.strategy';
+import { PrismaModule } from '@app/prisma';
+import { PassportModule } from '@nestjs/passport';
 
 @Module({
   imports: [
+    PrismaModule,
     SharedModule,
+    PassportModule,
     JwtModule.registerAsync({
       useFactory: (configService: ConfigService) => {
         return {

@@ -11,3 +11,10 @@ services:
       - '15672:15672'
     env_file:
       - .env
+  db:
+    container_name: postgres-db
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    env_file:
+      - .env
