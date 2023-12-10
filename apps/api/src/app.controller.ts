@@ -3,6 +3,7 @@ import { AppService } from './app.service';
 import { ClientProxy } from '@nestjs/microservices';
 import { Public } from '@app/shared/decorators/public.decorator';
 import { User } from '@app/shared/decorators/user.decorator';
+import { JwtUser } from 'apps/auth/model/jwt-user';
 
 @Controller()
 export class AppController {
@@ -12,7 +13,7 @@ export class AppController {
   ) {}
 
   @Get('')
-  async getHello2(@User() user) {
+  async getHello2(@User() user: JwtUser) {
     return `Welcome ${user.email}`;
   }
 
