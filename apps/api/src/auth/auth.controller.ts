@@ -1,6 +1,6 @@
 import {
   CreateUserDto,
-  GRPC_AUTH_SERVICE_NAME,
+  GRPC_AUTH,
   IAuthServiceClient,
   LoginDto,
 } from '@app/shared';
@@ -9,29 +9,24 @@ import {
   Body,
   Controller,
   Get,
-  HttpException,
   Inject,
   OnModuleInit,
   Post,
   Res,
-  Response,
-  UseInterceptors,
 } from '@nestjs/common';
 import { ClientGrpc, RpcException } from '@nestjs/microservices';
-import { GrpcErrorInterceptor } from '../grpc-exception.interceptor';
 import { firstValueFrom } from 'rxjs';
-import setCookieOptions from 'libs/constants/functions/setCookieOptions';
+import setCookieOptions from '@app/shared/setCookieOptions';
 import { User } from '@app/shared/decorators/user.decorator';
 
 @Controller('auth')
-@UseInterceptors(GrpcErrorInterceptor)
 export class AuthController implements OnModuleInit {
   private authService: IAuthServiceClient;
 
-  constructor(@Inject(GRPC_AUTH_SERVICE_NAME) private client: ClientGrpc) {}
+  constructor(@Inject(GRPC_AUTH.serviceName) private client: ClientGrpc) {}
   onModuleInit() {
     this.authService = this.client.getService<IAuthServiceClient>(
-      GRPC_AUTH_SERVICE_NAME,
+      GRPC_AUTH.serviceName,
     );
   }
 
@@ -43,7 +38,6 @@ export class AuthController implements OnModuleInit {
 
   @Get('test')
   printTest(@User() user) {
-    console.log({ user });
     return user;
   }
 

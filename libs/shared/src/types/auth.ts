@@ -3,8 +3,11 @@ import { Observable } from 'rxjs';
 import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, MaxLength, MinLength } from 'class-validator';
 
-export const GRPC_AUTH_PACKAGE_NAME = 'auth';
-export const GRPC_AUTH_SERVICE_NAME = 'AuthService';
+export const GRPC_AUTH = {
+  protoName: 'auth',
+  packageName: 'auth',
+  serviceName: 'AuthService',
+};
 
 export interface Empty {}
 
@@ -130,7 +133,7 @@ export function AuthServiceControllerMethods() {
         constructor.prototype,
         method,
       );
-      GrpcMethod(GRPC_AUTH_SERVICE_NAME, method)(
+      GrpcMethod(GRPC_AUTH.serviceName, method)(
         constructor.prototype[method],
         method,
         descriptor,
@@ -142,7 +145,7 @@ export function AuthServiceControllerMethods() {
         constructor.prototype,
         method,
       );
-      GrpcStreamMethod(GRPC_AUTH_SERVICE_NAME, method)(
+      GrpcStreamMethod(GRPC_AUTH.serviceName, method)(
         constructor.prototype[method],
         method,
         descriptor,

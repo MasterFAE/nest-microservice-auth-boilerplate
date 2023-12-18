@@ -1,7 +1,6 @@
 import { Response } from 'express';
 
 const defaultCookieOptions = {
-  // httpOnly: true,
   maxAge: 3.154e10,
 };
 

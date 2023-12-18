@@ -1,10 +1,9 @@
-import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '@app/prisma';
 import * as bcrypt from 'bcrypt';
 import {
-  IAuthServiceClient,
   CreateUserDto,
   LoginDto,
   User,
@@ -100,7 +99,7 @@ export class AuthService {
   }
 
   async signToken(user: UserJwt): Promise<JwtToken> {
-    const token = await this.jwtService.sign({ user });
+    const token = this.jwtService.sign({ user });
     return { token };
   }
 
@@ -113,7 +112,6 @@ export class AuthService {
       const { user, exp } = await this.jwtService.decode(token);
       return { user, exp };
     } catch (error) {
-      console.log('JWT Decoding error: ' + error.message);
       throw new CustomRpcException();
     }
   }

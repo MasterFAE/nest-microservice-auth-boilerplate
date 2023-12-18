@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { AuthModule } from './auth.module';
 import { ConfigService } from '@nestjs/config';
-import { MicroserviceOptions, Transport } from '@nestjs/microservices';
-import { GRPC_AUTH_PACKAGE_NAME, SharedService } from '@app/shared';
+import { MicroserviceOptions } from '@nestjs/microservices';
+import { GRPC_AUTH, SharedService } from '@app/shared';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import * as cookieParser from 'cookie-parser';
 
@@ -23,7 +23,7 @@ async function bootstrap() {
   );
 
   app.connectMicroservice<MicroserviceOptions>(
-    sharedService.getGrpcOptions(GRPC_AUTH_PACKAGE_NAME, 'auth'),
+    sharedService.getGrpcOptions(GRPC_AUTH.packageName, GRPC_AUTH.protoName),
   );
 
   logger.verbose('[Auth Service]: Auth Service is up!');

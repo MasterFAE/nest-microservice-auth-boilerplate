@@ -16,3 +16,9 @@ model User {
   username String @unique
   password String
 }
+
+model Example {
+  id        Int     @id @default(autoincrement())
+  name      String
+  published Boolean @default(true)
+}

@@ -33,13 +33,13 @@
         "watchAssets": true
       }
     },
-    "user": {
+    "example": {
       "type": "application",
-      "root": "apps/user",
+      "root": "apps/example",
       "entryFile": "src/main",
       "sourceRoot": "./",
       "compilerOptions": {
-        "tsConfigPath": "apps/user/tsconfig.app.json",
+        "tsConfigPath": "apps/example/tsconfig.app.json",
         "assets": ["proto/*.proto"],
         "watchAssets": true
       }

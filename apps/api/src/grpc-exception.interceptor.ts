@@ -9,8 +9,6 @@ import {
   UnauthorizedException,
   InternalServerErrorException,
   ForbiddenException,
-  Logger,
-  Inject,
 } from '@nestjs/common';
 import { RpcException } from '@nestjs/microservices';
 import { Observable, throwError } from 'rxjs';
@@ -24,7 +22,7 @@ export class GrpcErrorInterceptor implements NestInterceptor {
   ): Observable<any> | Promise<Observable<any>> {
     return next.handle().pipe(
       catchError((err) => {
-        console.log('INTERCEPT');
+        console.log('GRPC INTERCEPT');
         if (err instanceof RpcException) {
           const error: any = err.getError();
           const status = error.code as Status;

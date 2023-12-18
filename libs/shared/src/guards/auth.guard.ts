@@ -8,25 +8,23 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClientGrpc } from '@nestjs/microservices';
-import { firstValueFrom, map, of } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import { GRPC_AUTH_SERVICE_NAME, IAuthServiceClient, UserJwt } from '../types';
-import setCookieOptions from 'libs/constants/functions/setCookieOptions';
-import { INVALID_OR_EXPIRED_TOKEN_ERROR_MESSAGE } from 'libs/constants';
+import { GRPC_AUTH, IAuthServiceClient, UserJwt } from '../types';
+import setCookieOptions from '@app/shared/setCookieOptions';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
   private authService: IAuthServiceClient;
 
   constructor(
-    @Inject(GRPC_AUTH_SERVICE_NAME) private readonly client: ClientGrpc,
+    @Inject(GRPC_AUTH.serviceName) private readonly client: ClientGrpc,
     private readonly reflector: Reflector,
-    private readonly logger: Logger,
   ) {}
 
   onModuleInit() {
     this.authService = this.client.getService<IAuthServiceClient>(
-      GRPC_AUTH_SERVICE_NAME,
+      GRPC_AUTH.serviceName,
     );
   }
 

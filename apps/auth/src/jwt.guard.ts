@@ -19,17 +19,4 @@ export class JwtGuard extends AuthGuard('jwt') {
     if (isPublic) return true;
     return super.canActivate(context);
   }
-
-  // handleRequest(...props: any[]) {
-  //   try {
-  //     return super.handleRequest(...props);
-  //   } catch (error) {
-  //     console.log({ reqErr: error });
-  //     // Using this message to refresh token on Shared/AuthGuard
-  //     throw new CustomRpcException(
-  //       Status.UNAUTHENTICATED,
-  //       INVALID_OR_EXPIRED_TOKEN_ERROR_MESSAGE,
-  //     );
-  //   }
-  // }
 }
