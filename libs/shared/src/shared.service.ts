@@ -1,7 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { RmqOptions, Transport, RmqContext } from '@nestjs/microservices';
+import {
+  RmqOptions,
+  Transport,
+  RmqContext,
+  GrpcOptions,
+} from '@nestjs/microservices';
 import ISharedService from './interface/ISharedService';
+import { join } from 'path';
 
 @Injectable()
 export class SharedService implements ISharedService {
@@ -21,6 +27,16 @@ export class SharedService implements ISharedService {
         queueOptions: {
           durable: true,
         },
+      },
+    };
+  }
+
+  getGrpcOptions(name: string, protoName: string): GrpcOptions {
+    return {
+      transport: Transport.GRPC,
+      options: {
+        package: name,
+        protoPath: join(__dirname, `../${protoName}.proto`),
       },
     };
   }

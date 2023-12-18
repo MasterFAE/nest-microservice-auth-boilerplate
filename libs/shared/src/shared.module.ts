@@ -1,7 +1,19 @@
 import { DynamicModule, Module, Provider } from '@nestjs/common';
 import { SharedService } from './shared.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ClientProxyFactory, Transport } from '@nestjs/microservices';
+import {
+  ClientProxyFactory,
+  ClientsModule,
+  ClientsModuleOptions,
+  Transport,
+} from '@nestjs/microservices';
+import { join } from 'path';
+
+interface GrpcModule {
+  serviceName: string;
+  packageName: string;
+  protoName: string;
+}
 
 @Module({
   imports: [
@@ -47,5 +59,20 @@ export class SharedModule {
       providers,
       exports: providers,
     };
+  }
+
+  static registerGRPC(data: GrpcModule[]) {
+    let mappedOptions: ClientsModuleOptions = data.map(
+      ({ packageName, serviceName, protoName }) => ({
+        name: serviceName,
+        transport: Transport.GRPC,
+        options: {
+          package: packageName,
+          protoPath: join(__dirname, `../${protoName}.proto`),
+        },
+      }),
+    );
+
+    return ClientsModule.register(mappedOptions);
   }
 }

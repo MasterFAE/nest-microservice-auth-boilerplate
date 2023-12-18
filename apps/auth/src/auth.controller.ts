@@ -1,77 +1,66 @@
 import {
   Controller,
-  HttpStatus,
   Post,
-  Response,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
+import { MessagePattern, RpcException } from '@nestjs/microservices';
 import {
-  Ctx,
-  MessagePattern,
-  Payload,
-  RmqContext,
-} from '@nestjs/microservices';
-import { SharedService } from '@app/shared';
+  AuthServiceControllerMethods,
+  CreateUserDto,
+  IAuthServiceController,
+  JwtToken,
+  LoginDto,
+  SharedService,
+  UserJwt,
+  UserJwtPayload,
+  UserTokenPayload,
+} from '@app/shared';
 import { JwtGuard } from './jwt.guard';
-import { CreateUserDto, SignInUserDto } from './dto';
-import setCookieOptions from 'libs/constants/functions/setCookieOptions';
-import { Response as ExpressResponse } from 'express';
-import ApiResponse from 'libs/constants/model/apiresponse.class';
+import { Observable } from 'rxjs';
+import { TokenExpiredError } from '@nestjs/jwt';
 
 @Controller()
-export class AuthController {
-  constructor(
-    private readonly authService: AuthService,
-    private readonly shared: SharedService,
-  ) {}
+@AuthServiceControllerMethods()
+export class AuthController implements IAuthServiceController {
+  constructor(private readonly authService: AuthService) {}
 
-  @Post('login')
-  async login(
-    @Payload() data: SignInUserDto,
-    @Response({ passthrough: true }) res,
-  ) {
+  async login(data: LoginDto): Promise<UserTokenPayload> {
     try {
-      const user = await this.authService.signIn(data);
-      setCookieOptions(res, 'access_token', user.token);
-      return new ApiResponse({ user });
-    } catch (error) {
-      res.status(HttpStatus.BAD_REQUEST);
-      return new ApiResponse(null, false, error.toString());
+      const userWithToken = await this.authService.login(data);
+      return userWithToken;
+    } catch ({ error }) {
+      console.log({ error });
+      throw new RpcException(error);
     }
   }
 
-  @Post('signup')
-  async register(
-    @Payload() data: CreateUserDto,
-    @Response({ passthrough: true }) res: ExpressResponse,
-  ) {
+  async register(data: CreateUserDto): Promise<UserTokenPayload> {
     try {
-      const user = await this.authService.signUp(data);
-      setCookieOptions(res, 'access_token', user.token);
-      return new ApiResponse({ user });
-    } catch (error) {
-      res.status(HttpStatus.BAD_REQUEST);
-      return new ApiResponse(null, false, error.toString());
+      const userWithToken = await this.authService.register(data);
+      return userWithToken;
+    } catch ({ error }) {
+      throw new RpcException(error);
     }
   }
 
-  @MessagePattern({ cmd: 'verify-jwt' })
-  @UseGuards(JwtGuard)
-  async verifyJwt(@Ctx() ctx: RmqContext, @Payload() data: { token: string }) {
-    this.shared.acknowledgeMessage(ctx);
-    return this.authService.verifyJWT(data.token);
+  // @UseGuards(JwtGuard)
+  async verifyToken(data: JwtToken): Promise<UserJwtPayload> {
+    try {
+      const res = await this.authService.verifyToken(data);
+      console.log(res);
+      return res;
+    } catch ({ error }) {
+      throw new RpcException(error);
+    }
   }
 
-  @MessagePattern({ cmd: 'decode-jwt' })
-  async decodeJwt(@Ctx() ctx: RmqContext, @Payload() data: { token: string }) {
-    this.shared.acknowledgeMessage(ctx);
-    return this.authService.decodeJWT(data.token);
+  async decodeToken(data: JwtToken): Promise<UserJwtPayload> {
+    return this.authService.decodeToken(data);
   }
 
-  @MessagePattern({ cmd: 'sign-jwt' })
-  async signJwt(@Ctx() ctx: RmqContext, @Payload() data: { user: any }) {
-    this.shared.acknowledgeMessage(ctx);
-    return this.authService.signJWT(data.user);
+  async signToken(data: UserJwt): Promise<JwtToken> {
+    return this.authService.signToken(data);
   }
 }

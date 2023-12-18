@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { SharedModule, SharedService } from '@app/shared';
@@ -24,6 +24,6 @@ import { PassportModule } from '@nestjs/passport';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, SharedService, JwtStrategy],
+  providers: [AuthService, SharedService, JwtStrategy, Logger],
 })
 export class AuthModule {}

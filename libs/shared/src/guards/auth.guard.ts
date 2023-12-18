@@ -3,23 +3,34 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { ClientProxy, RpcException } from '@nestjs/microservices';
-import { catchError, Observable, of, switchMap } from 'rxjs';
+import { ClientGrpc } from '@nestjs/microservices';
+import { firstValueFrom, map, of } from 'rxjs';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
+import { GRPC_AUTH_SERVICE_NAME, IAuthServiceClient, UserJwt } from '../types';
+import setCookieOptions from 'libs/constants/functions/setCookieOptions';
+import { INVALID_OR_EXPIRED_TOKEN_ERROR_MESSAGE } from 'libs/constants';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
+  private authService: IAuthServiceClient;
+
   constructor(
-    @Inject('AUTH_SERVICE') private readonly authService: ClientProxy,
+    @Inject(GRPC_AUTH_SERVICE_NAME) private readonly client: ClientGrpc,
     private readonly reflector: Reflector,
+    private readonly logger: Logger,
   ) {}
 
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
+  onModuleInit() {
+    this.authService = this.client.getService<IAuthServiceClient>(
+      GRPC_AUTH_SERVICE_NAME,
+    );
+  }
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     if (context.getType() !== 'http') {
       return false;
     }
@@ -30,23 +41,57 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
 
     const req = context.switchToHttp().getRequest();
-
     const access_token = req.cookies.access_token ?? '';
-    return this.authService
-      .send({ cmd: 'verify-jwt' }, { token: access_token })
-      .pipe(
-        switchMap((res) => {
-          if (res instanceof RpcException) {
-            throw new UnauthorizedException(res.message);
-          }
-          // The user called back from jwt.strategy is now accesible with req.user
-          req.user = res.user;
-          return of(true);
-        }),
-        catchError((err) => {
-          console.log('Auth guard error: ', err.message);
-          throw new UnauthorizedException();
+
+    try {
+      const data = await firstValueFrom(
+        this.authService.verifyToken({
+          token: access_token,
         }),
       );
+      // The user called back from jwt.strategy is now accesible with req.user
+      req.user = data.user;
+      return true;
+    } catch (error) {
+      if (error.code != 8) throw new UnauthorizedException();
+
+      const expiredAt = error.details;
+      const { user } = await firstValueFrom(
+        this.authService.decodeToken({
+          token: access_token,
+        }),
+      );
+
+      if (!this.dateCheck(expiredAt))
+        throw new UnauthorizedException('Session expired');
+
+      await this.refreshToken(context, user);
+      req.user = user;
+      return true;
+    }
+  }
+
+  /**
+   * Refresh access_token and save it in the cookies
+   * @param context
+   * @param user
+   */
+  async refreshToken(context: ExecutionContext, user: UserJwt) {
+    console.log('Refresh Token Middleware Triggered');
+    const { token: newToken } = await firstValueFrom(
+      this.authService.signToken(user),
+    );
+    const req = context.switchToHttp().getRequest();
+    const res = context.switchToHttp().getResponse();
+
+    req.cookies.access_token = newToken;
+    setCookieOptions(res, 'access_token', newToken);
+  }
+
+  dateCheck(exp: number | Date) {
+    // Get date of one day earlier
+    const $aDayEarlier = Date.now() - 1000 * 60 * 60 * 24;
+    // Check if token expire date is between 1 days from now
+    return new Date(exp).getTime() >= $aDayEarlier;
   }
 }

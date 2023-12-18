@@ -1,20 +1,33 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { SharedModule } from '@app/shared';
-import { APP_GUARD } from '@nestjs/core';
+import { Logger, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import {
+  GRPC_AUTH_PACKAGE_NAME,
+  GRPC_AUTH_SERVICE_NAME,
+  SharedModule,
+} from '@app/shared';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuthGuard } from '@app/shared/guards/auth.guard';
-import { RefreshTokenMiddleware } from '@app/shared/middlewares/refresh-token.middleware';
+import { AuthModule } from './auth/auth.module';
+import { GrpcErrorInterceptor } from './grpc-exception.interceptor';
 
 @Module({
   imports: [
+    AuthModule,
     SharedModule.registerRMQ('AUTH_SERVICE', process.env.RABBITMQ_AUTH_QUEUE),
+    SharedModule.registerGRPC([
+      {
+        serviceName: GRPC_AUTH_SERVICE_NAME,
+        packageName: GRPC_AUTH_PACKAGE_NAME,
+        protoName: 'auth',
+      },
+    ]),
   ],
-  controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }],
+  controllers: [],
+  providers: [
+    { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_INTERCEPTOR, useClass: GrpcErrorInterceptor },
+    Logger,
+  ],
 })
 export class AppModule implements NestModule {
-  configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RefreshTokenMiddleware).forRoutes('*');
-  }
+  configure(consumer: MiddlewareConsumer) {}
 }

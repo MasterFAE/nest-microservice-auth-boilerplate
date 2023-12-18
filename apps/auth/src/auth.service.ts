@@ -1,42 +1,36 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import IAuthService from './interface/IAuthService';
-import { CreateUserDto, SignInUserDto } from './dto';
-import { JwtService } from '@nestjs/jwt';
+import { BadRequestException, HttpException, Injectable } from '@nestjs/common';
+import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '@app/prisma';
-import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import type { JwtUser } from '../model/jwt-user';
+import {
+  IAuthServiceClient,
+  CreateUserDto,
+  LoginDto,
+  User,
+  JwtToken,
+  UserJwtPayload,
+  UserTokenPayload,
+  UserJwt,
+} from '@app/shared';
+import { CustomRpcException } from '@app/shared/exceptions/custom-rpc.exception';
+import { Status } from '@grpc/grpc-js/build/src/constants';
 
 @Injectable()
-export class AuthService implements IAuthService {
+export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly prisma: PrismaService,
   ) {}
 
-  async verifyJWT(
-    jwt: string,
-  ): Promise<{ user: any; exp: number } | RpcException> {
-    if (!jwt) {
-      throw new RpcException('JWT token is missing');
-    }
-
-    try {
-      const { user, exp } = await this.jwtService.verifyAsync(jwt);
-      return { user, exp };
-    } catch (error) {
-      throw new RpcException(error.message);
-    }
-  }
-
-  async signUp({
+  async register({
     username,
     email,
     password,
-  }: CreateUserDto): Promise<Omit<User, 'password'> & { token: string }> {
+  }: CreateUserDto): Promise<UserTokenPayload> {
     const checkUser = await this.checkUser(email, username);
-    if (checkUser && checkUser.id) throw new Error('User already exists');
+    if (checkUser && checkUser.id)
+      throw new CustomRpcException(Status.ALREADY_EXISTS);
 
     const hash = bcrypt.hashSync(password, 10);
     const newUser = await this.prisma.user.create({
@@ -47,37 +41,35 @@ export class AuthService implements IAuthService {
       },
     });
 
-    const token = await this.signJWT({
+    const { token } = await this.signToken({
       username,
       email,
       sub: newUser.id,
     });
+
     // Instead of delete user.password using this
     const { password: _, ...noPasswordUser } = newUser;
 
-    return { ...noPasswordUser, token };
+    return { user: noPasswordUser, token };
   }
 
-  async signIn({
-    email,
-    password,
-  }: SignInUserDto): Promise<Omit<User, 'password'> & { token: string }> {
+  async login({ email, password }: LoginDto): Promise<UserTokenPayload> {
     const checkUser = await this.checkUser(email);
-    if (!checkUser) throw new Error('Invalid credentials');
+    if (!checkUser) throw new CustomRpcException(Status.INVALID_ARGUMENT);
 
     const compare = await bcrypt.compare(password, checkUser.password);
-    if (!compare) throw new Error('Invalid credentials');
+    if (!compare) throw new CustomRpcException(Status.INVALID_ARGUMENT);
 
     // Instead of delete user.password using this
     const { password: _, ...noPasswordUser } = checkUser;
 
-    const token = await this.signJWT({
+    const { token } = await this.signToken({
       username: noPasswordUser.username,
       email,
       sub: noPasswordUser.id,
     });
 
-    return { ...noPasswordUser, token };
+    return { user: noPasswordUser, token };
   }
 
   async checkUser(email, username?): Promise<User> {
@@ -89,16 +81,32 @@ export class AuthService implements IAuthService {
     return user;
   }
 
-  async signJWT(user: JwtUser) {
-    const token = await this.jwtService.sign({ user });
-    return token;
-  }
-
-  async decodeJWT(
-    token: string,
-  ): Promise<{ user: JwtUser; exp: number } | RpcException> {
+  async verifyToken({ token }: JwtToken): Promise<UserJwtPayload> {
     if (!token) {
       throw new RpcException('JWT token is missing');
+    }
+
+    try {
+      const { user, exp } = await this.jwtService.verifyAsync(token);
+      return { user, exp };
+    } catch (error) {
+      if (error instanceof TokenExpiredError)
+        throw new CustomRpcException(
+          Status.RESOURCE_EXHAUSTED,
+          error.expiredAt.toString(),
+        );
+      throw new CustomRpcException(Status.UNAUTHENTICATED);
+    }
+  }
+
+  async signToken(user: UserJwt): Promise<JwtToken> {
+    const token = await this.jwtService.sign({ user });
+    return { token };
+  }
+
+  async decodeToken({ token }: JwtToken): Promise<UserJwtPayload> {
+    if (!token) {
+      throw new CustomRpcException(Status.INVALID_ARGUMENT);
     }
 
     try {
@@ -106,7 +114,7 @@ export class AuthService implements IAuthService {
       return { user, exp };
     } catch (error) {
       console.log('JWT Decoding error: ' + error.message);
-      throw new RpcException(error.message);
+      throw new CustomRpcException();
     }
   }
 }
