@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '@app/prisma';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 import {
   CreateUserDto,
   LoginDto,

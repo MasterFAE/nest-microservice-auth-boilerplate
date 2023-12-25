@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions } from '@nestjs/microservices';
 import { GRPC_AUTH, SharedService } from '@app/shared';
 import { Logger, ValidationPipe } from '@nestjs/common';
-import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AuthModule);
@@ -13,7 +12,6 @@ async function bootstrap() {
   const logger = app.get(Logger);
   const AUTH_QUEUE = configService.get('RABBITMQ_AUTH_QUEUE');
 
-  app.use(cookieParser());
   app.useLogger(logger);
 
   app.useGlobalPipes(new ValidationPipe({ transform: true }));

@@ -62,6 +62,8 @@ export class SharedModule {
   }
 
   static registerGRPC(data: GrpcModule[]) {
+    console.log('TEST');
+    console.log(__dirname);
     let mappedOptions: ClientsModuleOptions = data.map(
       ({ packageName, serviceName, protoName }) => ({
         name: serviceName,

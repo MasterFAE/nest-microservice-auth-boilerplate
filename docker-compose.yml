@@ -1,5 +1,35 @@
 version: '3'
 services:
+  auth:
+    build:
+      target: development
+      context: .
+      dockerfile: ./apps/auth/Dockerfile
+    command: npm run start:dev auth
+    volumes:
+      - '.:/usr/src/app'
+    env_file:
+      - .env
+  api:
+    build:
+      target: development
+      context: .
+      dockerfile: ./apps/api/Dockerfile
+    command: npm run start:dev api
+    volumes:
+      - '.:/usr/src/app'
+    env_file:
+      - .env
+  example:
+    build:
+      target: development
+      context: .
+      dockerfile: ./apps/example/Dockerfile
+    command: npm run start:dev example
+    volumes:
+      - '.:/usr/src/app'
+    env_file:
+      - .env
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
