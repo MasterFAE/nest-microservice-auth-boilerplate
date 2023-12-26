@@ -12,7 +12,7 @@ import { Injectable } from '@nestjs/common';
 import { Observable } from 'rxjs';
 
 @Injectable()
-export class ExampleService {
+export class ExampleService implements IExampleServiceClient {
   create(request: CreateExampleDto): Observable<Example> {
     throw new Error('Method not implemented.');
   }

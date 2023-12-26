@@ -28,8 +28,10 @@ export class ExampleController implements IExampleServiceController {
   ): Example | Observable<Example> | Promise<Example> {
     throw new Error('Method not implemented.');
   }
-  getAll(request: Empty): Examples | Observable<Examples> | Promise<Examples> {
-    throw new Error('Method not implemented.');
+  getAll(
+    request: Empty,
+  ): Examples | Observable<Examples> | Promise<Examples> | any {
+    return 'TESTTT';
   }
   update(
     request: UpdateExampleDto,

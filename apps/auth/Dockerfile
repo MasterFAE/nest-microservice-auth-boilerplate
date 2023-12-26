@@ -1,22 +1,21 @@
 FROM node:alpine AS development
+EXPOSE 50051
 WORKDIR /usr/src/app
 
 COPY package*.json ./
-
-COPY tsconfig.json tsconfig.json 
+COPY tsconfig*.json ./
 COPY nest-cli.json nest-cli.json
-COPY proto proto
 COPY libs libs
 COPY apps/auth apps/auth
 COPY prisma ./prisma/
-
 RUN cd apps/auth && npm install
 RUN npm install && npx prisma generate
 
-RUN npm run build auth
-CMD [ "npm", "run", "start:dev", "auth" ]
+# RUN npm run build auth
+# CMD [ "npm", "run", "start:dev", "auth" ]
 
 FROM node:alpine AS production
+EXPOSE 50051
 ARG NODE_ENV=production
 ENV NODE_ENV=${NODE_ENV}
 

@@ -69,6 +69,7 @@ export class SharedModule {
         options: {
           package: packageName,
           protoPath: join(__dirname, `../${protoName}.proto`),
+          url: `${packageName}:50051`,
         },
       }),
     );

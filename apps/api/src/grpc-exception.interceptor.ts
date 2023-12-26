@@ -22,7 +22,6 @@ export class GrpcErrorInterceptor implements NestInterceptor {
   ): Observable<any> | Promise<Observable<any>> {
     return next.handle().pipe(
       catchError((err) => {
-        console.log('GRPC INTERCEPT');
         if (err instanceof RpcException) {
           const error: any = err.getError();
           const status = error.code as Status;
@@ -44,6 +43,8 @@ export class GrpcErrorInterceptor implements NestInterceptor {
             case Status.UNAUTHENTICATED:
               throw new UnauthorizedException('Unauthorized');
             default:
+              console.error('[GRPC] Unknown error occured');
+              console.error(err);
               throw new InternalServerErrorException('Internal Server Error');
           }
         } else {

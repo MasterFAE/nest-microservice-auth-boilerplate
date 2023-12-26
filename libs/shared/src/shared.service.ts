@@ -37,6 +37,7 @@ export class SharedService implements ISharedService {
       options: {
         package: name,
         protoPath: join(__dirname, `../${protoName}.proto`),
+        url: `${name}:50051`,
       },
     };
   }
