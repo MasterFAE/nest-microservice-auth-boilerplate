@@ -1,5 +1,4 @@
 FROM node:alpine AS development
-
 WORKDIR /usr/src/app
 
 COPY package*.json ./
@@ -7,15 +6,15 @@ COPY package*.json ./
 COPY tsconfig.json tsconfig.json 
 COPY nest-cli.json nest-cli.json
 COPY proto proto
-
-RUN npm install
-
-COPY apps/auth apps/auth
 COPY libs libs
+COPY apps/auth apps/auth
+COPY prisma ./prisma/
 
 RUN cd apps/auth && npm install
+RUN npm install && npx prisma generate
 
 RUN npm run build auth
+CMD [ "npm", "run", "start:dev", "auth" ]
 
 FROM node:alpine AS production
 ARG NODE_ENV=production
@@ -25,8 +24,12 @@ WORKDIR /usr/src/app
 
 COPY package*.json ./
 
-RUN npm ci --only=production
 
 COPY --from=development /usr/src/app/dist ./dist
+COPY --from=development /usr/src/app/prisma ./prisma
+COPY --from=development /usr/src/app/apps/auth/package*.json ./dist/apps/auth/
 
-CMD ["node", "dist/apps/auth/main"]
+RUN cd dist/apps/auth && npm install --omit=dev
+RUN npm install --omit=dev && npx prisma generate
+
+CMD ["node", "dist/apps/auth/src/main"]
