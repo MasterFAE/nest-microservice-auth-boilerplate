@@ -3,17 +3,10 @@ import { JwtService, TokenExpiredError } from '@nestjs/jwt';
 import { RpcException } from '@nestjs/microservices';
 import { PrismaService } from '@app/prisma';
 import * as bcrypt from 'bcryptjs';
-import {
-  CreateUserDto,
-  LoginDto,
-  User,
-  JwtToken,
-  UserJwtPayload,
-  UserTokenPayload,
-  UserJwt,
-} from '@app/shared';
-import { CustomRpcException } from '@app/shared/exceptions/custom-rpc.exception';
 import { Status } from '@grpc/grpc-js/build/src/constants';
+import { User } from '@prisma/client';
+import { ServiceException } from '@app/shared/exceptions/custom-service.exception';
+import { JwtToken, UserCreate, UserId, UserJwtPayload, UserLogin, UserSignJwt, UserTokenPayload } from '@app/shared/types/auth';
 
 @Injectable()
 export class AuthService {
@@ -26,11 +19,10 @@ export class AuthService {
     username,
     email,
     password,
-  }: CreateUserDto): Promise<UserTokenPayload> {
+  }: UserCreate): Promise<UserTokenPayload> {
     const checkUser = await this.checkUser(email, username);
     if (checkUser && checkUser.id)
-      throw new CustomRpcException(Status.ALREADY_EXISTS);
-
+      throw new ServiceException(Status.ALREADY_EXISTS, 'User already exists');
     const hash = bcrypt.hashSync(password, 10);
     const newUser = await this.prisma.user.create({
       data: {
@@ -39,7 +31,6 @@ export class AuthService {
         password: hash,
       },
     });
-
     const { token } = await this.signToken({
       username,
       email,
@@ -52,12 +43,20 @@ export class AuthService {
     return { user: noPasswordUser, token };
   }
 
-  async login({ email, password }: LoginDto): Promise<UserTokenPayload> {
+  async login({ email, password }: UserLogin): Promise<UserTokenPayload> {
     const checkUser = await this.checkUser(email);
-    if (!checkUser) throw new CustomRpcException(Status.INVALID_ARGUMENT);
+    if (!checkUser)
+      throw new ServiceException(
+        Status.INVALID_ARGUMENT,
+        'Invalid email or password',
+      );
 
     const compare = await bcrypt.compare(password, checkUser.password);
-    if (!compare) throw new CustomRpcException(Status.INVALID_ARGUMENT);
+    if (!compare)
+      throw new ServiceException(
+        Status.INVALID_ARGUMENT,
+        'Invalid email or password',
+      );
 
     // Instead of delete user.password using this
     const { password: _, ...noPasswordUser } = checkUser;
@@ -67,7 +66,6 @@ export class AuthService {
       email,
       sub: noPasswordUser.id,
     });
-
     return { user: noPasswordUser, token };
   }
 
@@ -80,6 +78,16 @@ export class AuthService {
     return user;
   }
 
+  async getUserFromId(data: UserId): Promise<Omit<User, 'password'>> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: data.id,
+      },
+    });
+    let { password, ..._user } = user;
+    return _user;
+  }
+
   async verifyToken({ token }: JwtToken): Promise<UserJwtPayload> {
     if (!token) {
       throw new RpcException('JWT token is missing');
@@ -90,29 +98,28 @@ export class AuthService {
       return { user, exp };
     } catch (error) {
       if (error instanceof TokenExpiredError)
-        throw new CustomRpcException(
+        throw new ServiceException(
           Status.RESOURCE_EXHAUSTED,
           error.expiredAt.toString(),
         );
-      throw new CustomRpcException(Status.UNAUTHENTICATED);
+      throw new ServiceException(Status.UNAUTHENTICATED);
     }
   }
 
-  async signToken(user: UserJwt): Promise<JwtToken> {
+  async signToken(user: UserSignJwt): Promise<JwtToken> {
     const token = this.jwtService.sign({ user });
     return { token };
   }
 
   async decodeToken({ token }: JwtToken): Promise<UserJwtPayload> {
     if (!token) {
-      throw new CustomRpcException(Status.INVALID_ARGUMENT);
+      throw new ServiceException(Status.INVALID_ARGUMENT);
     }
-
     try {
       const { user, exp } = await this.jwtService.decode(token);
       return { user, exp };
     } catch (error) {
-      throw new CustomRpcException();
+      throw new ServiceException(Status.UNAUTHENTICATED);
     }
   }
 }

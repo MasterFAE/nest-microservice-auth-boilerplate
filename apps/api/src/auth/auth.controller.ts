@@ -1,11 +1,4 @@
 import {
-  CreateUserDto,
-  GRPC_AUTH,
-  IAuthServiceClient,
-  LoginDto,
-} from '@app/shared';
-import { Public } from '@app/shared/decorators/public.decorator';
-import {
   Body,
   Controller,
   Get,
@@ -16,38 +9,53 @@ import {
 } from '@nestjs/common';
 import { ClientGrpc, RpcException } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
-import setCookieOptions from '@app/shared/setCookieOptions';
-import { User } from '@app/shared/decorators/user.decorator';
+import { CreateUserDto, LoginDto } from './dto';
+import { Public } from '../lib/decorators/public.decorator';
+import { User } from '../lib/decorators/user.decorator';
+import setCookieOptions from '../lib/setCookieOptions';
+import { IAuthServiceClient, GRPC_AUTH } from '@app/shared';
 
 @Controller('auth')
 export class AuthController implements OnModuleInit {
-  private authService: IAuthServiceClient;
+  private authServer: IAuthServiceClient;
 
   constructor(@Inject(GRPC_AUTH.serviceName) private client: ClientGrpc) {}
+
   onModuleInit() {
-    this.authService = this.client.getService<IAuthServiceClient>(
+    this.authServer = this.client.getService<IAuthServiceClient>(
       GRPC_AUTH.serviceName,
     );
   }
 
   @Public()
-  @Get('test2')
+  @Get('test')
   pri() {
     return 'sa';
   }
 
-  @Get('test')
+  @Get('current-user')
   printTest(@User() user) {
     return user;
+  }
+
+  @Get('')
+  async getCurrentUser(@User('sub') id) {
+    try {
+      const serviceResponse = await firstValueFrom(
+        this.authServer.currentUser({ id }),
+      );
+
+      return serviceResponse;
+    } catch (error) {
+      throw new RpcException(error);
+    }
   }
 
   @Public()
   @Post('login')
   async login(@Res() res, @Body() data: LoginDto) {
     try {
-      const serviceResponse = await firstValueFrom(
-        this.authService.login(data),
-      );
+      const serviceResponse = await firstValueFrom(this.authServer.login(data));
       setCookieOptions(res, 'access_token', serviceResponse.token);
       res.json(serviceResponse);
     } catch (error) {
@@ -60,7 +68,7 @@ export class AuthController implements OnModuleInit {
   async register(@Res() res, @Body() data: CreateUserDto) {
     try {
       const serviceResponse = await firstValueFrom(
-        this.authService.register(data),
+        this.authServer.register(data),
       );
       setCookieOptions(res, 'access_token', serviceResponse.token);
       res.json(serviceResponse);

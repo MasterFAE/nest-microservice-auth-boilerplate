@@ -1,5 +1,4 @@
 import { GRPC_EXAMPLE, IExampleServiceClient } from '@app/shared';
-import { Public } from '@app/shared/decorators/public.decorator';
 import {
   Body,
   Controller,
@@ -30,7 +29,6 @@ export class ExampleController implements OnModuleInit {
     return this.exampleService.get({ id });
   }
 
-  @Public()
   @Get('')
   getAll() {
     return this.exampleService.getAll({});

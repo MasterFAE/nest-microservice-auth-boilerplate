@@ -1,12 +1,15 @@
 /* eslint-disable */
 import { GrpcMethod, GrpcStreamMethod } from '@nestjs/microservices';
 import { Observable } from 'rxjs';
-import { Empty } from './auth';
+import { GRPC_PACKAGE } from '.';
 
-export const GRPC_EXAMPLE = {
+export const GRPC_EXAMPLE : GRPC_PACKAGE = {
   protoName: 'example',
   packageName: 'example',
   serviceName: 'ExampleService',
+  host: process.env['EXAMPLE_SERVICE_HOST'],
+  port: process.env['EXAMPLE_SERVICE_PORT'],
+  httpPort: process.env['EXAMPLE_SERVICE_HTTP_PORT'],
 };
 
 export interface Example {
@@ -14,6 +17,8 @@ export interface Example {
   name: string;
   published: boolean;
 }
+
+export interface Empty {}
 
 export interface Examples {
   examples: Example[];

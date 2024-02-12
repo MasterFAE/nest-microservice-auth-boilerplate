@@ -3,15 +3,17 @@ import {
   ExecutionContext,
   Inject,
   Injectable,
-  Logger,
   UnauthorizedException,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { ClientGrpc } from '@nestjs/microservices';
 import { firstValueFrom } from 'rxjs';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
-import { GRPC_AUTH, IAuthServiceClient, UserJwt } from '../types';
-import setCookieOptions from '@app/shared/setCookieOptions';
+import setCookieOptions from 'apps/api/src/lib/setCookieOptions';
+import { ConfigService } from '@nestjs/config';
+import { Status } from '@grpc/grpc-js/build/src/constants';
+import { GRPC_AUTH, IAuthServiceClient, UserSignJwt } from '@app/shared/types/auth';
+
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -20,6 +22,7 @@ export class AuthGuard implements CanActivate {
   constructor(
     @Inject(GRPC_AUTH.serviceName) private readonly client: ClientGrpc,
     private readonly reflector: Reflector,
+    private readonly configService: ConfigService,
   ) {}
 
   onModuleInit() {
@@ -39,6 +42,8 @@ export class AuthGuard implements CanActivate {
     if (isPublic) return true;
 
     const req = context.switchToHttp().getRequest();
+    if (req.path == this.configService.get('PROMETHEUS_METRIC_PATH'))
+      return true;
     const access_token = req.cookies.access_token ?? '';
 
     try {
@@ -47,11 +52,13 @@ export class AuthGuard implements CanActivate {
           token: access_token,
         }),
       );
+      console.log(1)
       // The user called back from jwt.strategy is now accesible with req.user
       req.user = data.user;
       return true;
     } catch (error) {
-      if (error.code != 8) throw new UnauthorizedException();
+      if (error.code != Status.RESOURCE_EXHAUSTED)
+        throw new UnauthorizedException();
 
       const expiredAt = error.details;
       const { user } = await firstValueFrom(
@@ -62,7 +69,6 @@ export class AuthGuard implements CanActivate {
 
       if (!this.dateCheck(expiredAt))
         throw new UnauthorizedException('Session expired');
-
       await this.refreshToken(context, user);
       req.user = user;
       return true;
@@ -74,7 +80,7 @@ export class AuthGuard implements CanActivate {
    * @param context
    * @param user
    */
-  async refreshToken(context: ExecutionContext, user: UserJwt) {
+  async refreshToken(context: ExecutionContext, user: UserSignJwt) {
     console.log('Refresh Token Middleware Triggered');
     const { token: newToken } = await firstValueFrom(
       this.authService.signToken(user),
